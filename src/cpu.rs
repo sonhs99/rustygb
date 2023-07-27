@@ -29,9 +29,7 @@ impl CPU {
             Instruction::HALT => self.halt = true,
             Instruction::STOP => self.halt = true,
             Instruction::DI => self.IME = false,
-            Instruction::EI => {
-                self.IME = true;
-            }
+            Instruction::EI => self.IME = true,
 
             // Branch / Function Inst
             Instruction::JR(cond) => {

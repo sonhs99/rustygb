@@ -82,7 +82,7 @@ impl MemoryBus {
                     0xFF46 => {
                         // DMA
                         for idx in (0..160).rev() {
-                            self.oam[idx] = self.read_byte(value as u16 * 0x100 + idx as u16)?;
+                            self.oam[idx] = self.read_byte(value as u16 * 0x100 | idx as u16)?;
                         }
                     }
                     _ => {}

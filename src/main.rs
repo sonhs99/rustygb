@@ -18,10 +18,10 @@ const IO_WY: usize = 0x4A;
 const IO_WX: usize = 0x4B;
 const IO_IF: usize = 0x0F;
 
-const FRAME_WIDTH: usize = 144;
-const FRAME_HEIGHT: usize = 160;
+const FRAME_WIDTH: usize = 160;
+const FRAME_HEIGHT: usize = 144;
 
-fn get_color(tile: u16, y_offset: u8, x_offset: u8, video_ram: &[u8; 8192]) -> u8 {
+fn get_color(tile: u16, y_offset: u16, x_offset: u16, video_ram: &[u8; 8192]) -> u8 {
     let tile_data = tile * 16 + y_offset as u16 * 2;
     ((video_ram[(tile_data + 1) as usize].wrapping_shr(x_offset as u32)) % 2 * 2)
         .wrapping_add(video_ram[tile_data as usize].wrapping_shr(x_offset as u32))
@@ -115,8 +115,8 @@ fn main() {
                                 } else {
                                     256 + tile as i8 as i16 as u16
                                 },
-                                y_offset & 0x07,
-                                7 - (x_offset & 7),
+                                (y_offset & 0x07) as u16,
+                                (7 - (x_offset & 7)) as u16,
                                 video_ram,
                             );
                             if io[IO_LCDC] & 0x02 != 0 {
@@ -127,10 +127,12 @@ fn main() {
                                         io[IO_LY].wrapping_sub(oam[sprite]).wrapping_add(16);
                                     let sprite_color = get_color(
                                         oam[sprite + 2] as u16,
-                                        sprite_y
-                                            ^ (if oam[sprite + 3] & 0x40 != 0 { 7 } else { 0 }),
-                                        sprite_x
-                                            ^ (if oam[sprite + 3] & 0x20 != 0 { 0 } else { 7 }),
+                                        (sprite_y
+                                            ^ (if oam[sprite + 3] & 0x40 != 0 { 7 } else { 0 }))
+                                            as u16,
+                                        (sprite_x
+                                            ^ (if oam[sprite + 3] & 0x20 != 0 { 0 } else { 7 }))
+                                            as u16,
                                         video_ram,
                                     );
                                     if sprite_y < 8
@@ -140,19 +142,21 @@ fn main() {
                                     {
                                         color = sprite_color;
                                         palette_index = if oam[sprite] & 0x10 != 0 {
-                                            IO_OBP0
-                                        } else {
                                             IO_OBP1
+                                        } else {
+                                            IO_OBP0
                                         };
                                     }
                                 }
-                                frame_buffer[(io[IO_LY] as usize)
-                                    .wrapping_mul(160)
-                                    .wrapping_add(tmp as usize)] = palette[((io[palette_index]
-                                    .wrapping_shr(2 * color as u32))
-                                    % 4)
-                                    as usize
-                                    + ((palette_index - IO_BGP) * 4 & 7)];
+                                if palette_index == IO_OBP1 {
+                                    frame_buffer[(io[IO_LY] as usize)
+                                        .wrapping_mul(160)
+                                        .wrapping_add(tmp as usize)] = palette[((io[palette_index]
+                                        .wrapping_shr(2 * color as u32))
+                                        % 4)
+                                        as usize
+                                        + ((palette_index - IO_BGP) * 4 & 7)];
+                                }
                             }
                         }
                     }
