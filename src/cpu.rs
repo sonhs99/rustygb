@@ -31,12 +31,6 @@ impl CPU {
             Instruction::DI => self.IME = false,
             Instruction::EI => {
                 self.IME = true;
-                println!(
-                    "IME = {:02X}, IF = {:02X}, IE = {:02X}",
-                    self.IME as u8,
-                    self.bus.io[IO_IF],
-                    self.bus.get_ie()
-                );
             }
 
             // Branch / Function Inst
@@ -83,6 +77,7 @@ impl CPU {
                 self.tick();
             }
             Instruction::RETI => {
+                self.IME = true;
                 self.reg.pc = self.pop();
                 self.tick()
             }
@@ -123,7 +118,11 @@ impl CPU {
             Instruction::LD16(dest, src) => {
                 let value = self.read_operand(src);
                 self.write_operand16(dest, value);
-                self.tick();
+                if let Operand::Register16(Reg16Index::SP) = dest {
+                    if let Operand::Register16(Reg16Index::HL) = src {
+                        self.tick();
+                    }
+                }
             }
             Instruction::LDOffset(dest, src) => {
                 let value = self.read_operand(src);
@@ -190,6 +189,7 @@ impl CPU {
                     .set_flag(Flag::H, (value & 0xF00) + (self.reg.hl() & 0xF00) > 0xF00);
                 self.reg.set_flag(Flag::C, carry);
                 self.reg.set_hl(new_value);
+                self.tick();
             }
             Instruction::ADDSP => {
                 let value = self.fetch() as i8 as i16 as u16;
@@ -458,7 +458,7 @@ impl CPU {
         self.tick();
         self.bus
             .write_byte(address, value)
-            .unwrap_or_else(|| panic!("Cannot write Memory from {:#04X}", address))
+            .unwrap_or_else(|| panic!("Cannot write Memory to {:#04X}", address))
     }
 
     fn read_word(&mut self, address: u16) -> u16 {
@@ -584,7 +584,14 @@ impl CPU {
 
     pub fn step(&mut self) -> u16 {
         self.cycles = 0;
-        if self.IME && self.bus.io[IO_IF] != 0 && self.bus.get_ie() != 0 {
+        // println!(
+        //     "IME {}, IF {:02X}, IE {:02X}",
+        //     self.IME,
+        //     self.bus.io[IO_IF],
+        //     self.bus.get_ie()
+        // );
+        if self.IME && (self.bus.io[IO_IF] & self.bus.get_ie()) != 0 {
+            // println!("Interrupt Recieved");/
             self.IME = false;
             self.halt = false;
             self.bus.io[IO_IF] = 0;
