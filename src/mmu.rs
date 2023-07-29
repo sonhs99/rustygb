@@ -62,6 +62,7 @@ impl MemoryBus {
     }
     pub fn write_byte(&mut self, address: u16, value: u8) -> Option<()> {
         match address {
+            0x0000..=0x1FFF => {}
             0x2000..=0x3FFF => {
                 self.rom1 = (if value != 0 { (value & 0x3F) as u32 } else { 1 }) << 14;
             }
@@ -70,6 +71,7 @@ impl MemoryBus {
                     self.extmbank = (value as u32) << 13;
                 }
             }
+            0x6000..=0x7FFF => {}
             0x8000..=0x9FFF => self.video_ram[(address & 0x1FFF) as usize] = value,
             0xA000..=0xBFFF => {
                 self.extram[(self.extmbank + (address as u32 & 0x1FFF)) as usize] = value

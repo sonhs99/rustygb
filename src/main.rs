@@ -22,9 +22,9 @@ const FRAME_WIDTH: usize = 160;
 const FRAME_HEIGHT: usize = 144;
 
 fn get_color(tile: u16, y_offset: u16, x_offset: u16, video_ram: &[u8; 8192]) -> u8 {
-    let tile_data = tile * 16 + y_offset as u16 * 2;
+    let tile_data = tile * 16 + (y_offset as u16 % 8) * 2;
     ((video_ram[(tile_data + 1) as usize].wrapping_shr(x_offset as u32)) % 2 * 2)
-        .wrapping_add(video_ram[tile_data as usize].wrapping_shr(x_offset as u32))
+        + video_ram[tile_data as usize].wrapping_shr(x_offset as u32) % 2
 }
 
 fn read_rom(rom_name: &str) -> Vec<u8> {
@@ -55,7 +55,7 @@ fn main() {
     //         .unwrap();
     // }
 
-    let rom = read_rom("./roms/Pokemon - Red Version (E).gb");
+    let rom = read_rom("./roms/Pokemon - Red Version (USA, Europe) (SGB Enhanced).gb");
 
     let palette: [u32; 12] = [
         0xFFFFFFFF, 0xFFFFA563, 0xFFFF0000, 0xFF000000, 0xFFFFFFFF, 0xFF8484FF, 0xFF3A3A94,
@@ -90,12 +90,12 @@ fn main() {
                             let x_offset = if is_window {
                                 tmp + 7 - io[IO_WX]
                             } else {
-                                tmp + io[IO_SCX]
+                                tmp.wrapping_add(io[IO_SCX])
                             };
                             let y_offset = if is_window {
                                 io[IO_LY] - io[IO_WY]
                             } else {
-                                io[IO_LY] + io[IO_SCY]
+                                io[IO_LY].wrapping_add(io[IO_SCY])
                             };
                             let mut palette_index: usize = IO_BGP;
                             let tile_check =
@@ -113,7 +113,7 @@ fn main() {
                                 if io[IO_LCDC] & 0x10 != 0 {
                                     tile
                                 } else {
-                                    256 + tile as i8 as i16 as u16
+                                    (256 + tile as i8 as i16) as u16
                                 },
                                 (y_offset & 0x07) as u16,
                                 (7 - (x_offset & 7)) as u16,
@@ -131,7 +131,7 @@ fn main() {
                                             ^ (if oam[sprite + 3] & 0x40 != 0 { 7 } else { 0 }))
                                             as u16,
                                         (sprite_x
-                                            ^ (if oam[sprite + 3] & 0x20 != 0 { 0 } else { 7 }))
+                                            ^ (if oam[sprite + 3] & 0x20 != 0 { 7 } else { 0 }))
                                             as u16,
                                         video_ram,
                                     );
@@ -148,15 +148,14 @@ fn main() {
                                         };
                                     }
                                 }
-                                if palette_index == IO_OBP1 {
-                                    frame_buffer[(io[IO_LY] as usize)
-                                        .wrapping_mul(160)
-                                        .wrapping_add(tmp as usize)] = palette[((io[palette_index]
-                                        .wrapping_shr(2 * color as u32))
-                                        % 4)
-                                        as usize
-                                        + ((palette_index - IO_BGP) * 4 & 7)];
-                                }
+
+                                frame_buffer[(io[IO_LY] as usize)
+                                    .wrapping_mul(160)
+                                    .wrapping_add(tmp as usize)] = palette[((io[palette_index]
+                                    .wrapping_shr(2 * color as u32))
+                                    % 4)
+                                    as usize
+                                    + ((palette_index - IO_BGP) * 4 & 7)];
                             }
                         }
                     }
