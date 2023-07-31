@@ -22,7 +22,7 @@ const FRAME_WIDTH: usize = 160;
 const FRAME_HEIGHT: usize = 144;
 
 fn get_color(tile: u16, y_offset: u16, x_offset: u16, video_ram: &[u8; 8192]) -> u8 {
-    let tile_data = tile * 16 + (y_offset as u16 % 8) * 2;
+    let tile_data = tile * 16 + y_offset as u16 * 2;
     ((video_ram[(tile_data + 1) as usize].wrapping_shr(x_offset as u32)) % 2 * 2)
         + video_ram[tile_data as usize].wrapping_shr(x_offset as u32) % 2
 }
@@ -131,11 +131,11 @@ fn main() {
                                             ^ (if oam[sprite + 3] & 0x40 != 0 { 7 } else { 0 }))
                                             as u16,
                                         (sprite_x
-                                            ^ (if oam[sprite + 3] & 0x20 != 0 { 7 } else { 0 }))
+                                            ^ (if oam[sprite + 3] & 0x20 != 0 { 0 } else { 7 }))
                                             as u16,
                                         video_ram,
                                     );
-                                    if sprite_y < 8
+                                    if sprite_x < 8
                                         && sprite_y < 8
                                         && !(oam[sprite + 3] & 0x80 != 0 && color != 0)
                                         && sprite_color != 0
