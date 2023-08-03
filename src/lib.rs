@@ -1,4 +1,11 @@
 pub mod cpu;
-pub mod inst;
+pub mod cycle;
+pub mod dma;
+pub mod gpu;
+pub mod input;
+pub mod mbc;
 pub mod mmu;
-pub mod register;
+
+pub mod device;
+mod inst;
+mod register;

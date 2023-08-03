@@ -80,7 +80,7 @@ impl Registers {
     }
     pub fn set_af(&mut self, value: u16) {
         self.a = (value >> 8) as u8;
-        self.f = value as u8;
+        self.f = (value & 0xF0) as u8;
     }
 }
 
