@@ -1,4 +1,5 @@
-use std::{collections::HashMap, rc::Rc};
+use alloc::{rc::Rc, vec, vec::Vec};
+use hashbrown::HashMap;
 
 pub struct MemoryBus {
     memory: [u8; 0x10000],

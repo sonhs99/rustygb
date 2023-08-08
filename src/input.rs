@@ -1,4 +1,5 @@
 use crate::device::IOHandler;
+use crate::hardware::HardwareHandle;
 use crate::mmu::{MemoryBus, MemoryRead, MemoryWrite};
 
 pub struct Pad {
@@ -18,11 +19,8 @@ impl Pad {
         }
     }
 
-    pub fn step<T>(&mut self, callback: T)
-    where
-        T: Fn() -> (u8, u8),
-    {
-        let (cross_input, ab_input) = callback();
+    pub fn step(&mut self, hw: &HardwareHandle) {
+        let (cross_input, ab_input) = hw.get().borrow_mut().get_keys();
         self.cross_button = cross_input;
         self.ab_button = ab_input;
     }

@@ -337,7 +337,6 @@ mod tests {
         let mut count = 0;
         for idx in 0x00 as u8..0xFF as u8 {
             if let None = Instruction::from_byte(idx) {
-                println!("fail : {:#X}", idx);
                 count += 1;
             }
         }
@@ -349,7 +348,6 @@ mod tests {
         let mut count = 0;
         for idx in 0x00 as u8..=0xFF as u8 {
             if let None = Instruction::from_byte_prefixed(idx) {
-                println!("fail : {:#X}", idx);
                 count += 1;
             }
         }

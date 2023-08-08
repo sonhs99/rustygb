@@ -1,4 +1,5 @@
 use crate::device::IOHandler;
+use crate::hardware::HardwareHandle;
 use crate::mmu::{MemoryBus, MemoryRead, MemoryWrite};
 
 pub type RenderCallback = fn(&FrameBuffer);
@@ -100,10 +101,7 @@ impl GPU {
             ],
         }
     }
-    pub fn step<T>(&mut self, elapsed_cycles: u16, bus: &mut MemoryBus, callback: &mut T)
-    where
-        T: FnMut(&FrameBuffer),
-    {
+    pub fn step(&mut self, elapsed_cycles: u16, bus: &mut MemoryBus, hw: &HardwareHandle) {
         for _ in 0..elapsed_cycles {
             if self.LCDC & 0x80 != 0 {
                 self.ppu_dot += 1;
@@ -113,7 +111,7 @@ impl GPU {
                     }
                     if self.LY == 143 {
                         bus.set_if(bus.get_if() | 1);
-                        callback(&self.frame_buffer);
+                        hw.get().borrow_mut().draw_framebuffer(&self.frame_buffer);
                     }
                     self.LY = (self.LY + 1) % 154;
                     self.ppu_dot = 0;
@@ -187,7 +185,7 @@ impl GPU {
 }
 
 impl IOHandler for GPU {
-    fn read(&mut self, mmu: &MemoryBus, address: u16) -> MemoryRead {
+    fn read(&mut self, _mmu: &MemoryBus, address: u16) -> MemoryRead {
         match address {
             0x8000..=0x97FF => unsafe {
                 MemoryRead::Value(
@@ -216,7 +214,7 @@ impl IOHandler for GPU {
             _ => MemoryRead::PassThrough,
         }
     }
-    fn write(&mut self, mmu: &MemoryBus, address: u16, value: u8) -> MemoryWrite {
+    fn write(&mut self, _mmu: &MemoryBus, address: u16, value: u8) -> MemoryWrite {
         match address {
             0x8000..=0x97FF => unsafe {
                 *(&mut self.tiles[0] as *mut Tile as *mut u8).offset((address & 0x1FFF) as isize) =

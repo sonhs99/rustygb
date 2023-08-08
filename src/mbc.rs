@@ -1,5 +1,6 @@
 use crate::device::IOHandler;
 use crate::mmu::{MemoryRead, MemoryWrite};
+use alloc::vec::Vec;
 
 pub struct Cartridge {
     rom: Vec<u8>,
