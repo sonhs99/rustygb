@@ -60,8 +60,9 @@ pub struct GPU {
 
 impl Tile {
     pub fn color(&self, x_offset: u8, y_offset: u8) -> u8 {
-        let low = (self.pixels[(y_offset * 2) as usize].wrapping_shr(x_offset as u32)) & 0x01;
-        let high = (self.pixels[(y_offset * 2 + 1) as usize].wrapping_shr(x_offset as u32)) & 0x01;
+        let low = (self.pixels[(y_offset % 8 * 2) as usize].wrapping_shr(x_offset as u32)) & 0x01;
+        let high =
+            (self.pixels[(y_offset % 8 * 2 + 1) as usize].wrapping_shr(x_offset as u32)) & 0x01;
         high * 2 + low
     }
 }
@@ -93,7 +94,7 @@ impl GPU {
                 pixels: [0; FRAME_HEIGHT * FRAME_WIDTH],
             },
             palette: [
-                [0xFFFFFFFF, 0xFFFFA563, 0xFFFF0000, 0xFF000000],
+                [0xFFFFFFFF, 0xFFAAAAAA, 0xFF555555, 0xFF000000],
                 [0xFFFFFFFF, 0xFF8484FF, 0xFF3A3A94, 0xFF000000],
                 [0xFFFFFFFF, 0xFFFFA563, 0xFFFF0000, 0xFF000000],
             ],
@@ -149,16 +150,23 @@ impl GPU {
             let tile = self.tiles[tile_index as usize];
             let mut color = tile.color(7 - (x_offset & 0x07), y_offset & 0x07);
             if self.LCDC & 0x02 != 0 {
+                let ysize = if self.LCDC & 0x04 != 0 { 16 } else { 8 };
                 for sprite in &self.oam {
+                    if sprite.attribute & 0x80 != 0 && color != 0 {
+                        continue;
+                    }
                     let sprite_x = tmp.wrapping_sub(sprite.x).wrapping_add(8);
                     let sprite_y = self.LY.wrapping_sub(sprite.y).wrapping_add(16);
-                    let sprite_color = self.tiles[sprite.tile_index as usize].color(
-                        sprite_x ^ (if sprite.attribute & 0x20 != 0 { 0 } else { 7 }),
-                        sprite_y ^ (if sprite.attribute & 0x40 != 0 { 7 } else { 0 }),
-                    );
+                    let sprite_color = self.tiles[(sprite.tile_index
+                        + ((sprite_y >= 8) != (sprite.attribute & 0x40 != 0)) as u8)
+                        as usize]
+                        .color(
+                            sprite_x ^ (if sprite.attribute & 0x20 != 0 { 0 } else { 7 }),
+                            sprite_y ^ (if sprite.attribute & 0x40 != 0 { 7 } else { 0 }),
+                        );
                     if sprite_x < 8
-                        && sprite_y < 8
-                        && !(sprite.attribute & 0x80 != 0 && color != 0)
+                        && sprite_y < ysize
+                        // && !(sprite.attribute & 0x80 != 0 && color != 0)
                         && sprite_color != 0
                     {
                         color = sprite_color;

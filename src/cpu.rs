@@ -1,4 +1,6 @@
-use crate::inst::{Condition, Instruction, Operand, Reg16Index, Reg8Index};
+use crate::inst::{
+    inst_cb_time, inst_time, Condition, Instruction, Operand, Reg16Index, Reg8Index,
+};
 use crate::mmu::MemoryBus;
 use crate::register::{Flag, Registers};
 
@@ -25,7 +27,7 @@ impl CPU {
             // Single Inst
             Instruction::NOP => {}
             Instruction::HALT => self.halt = true,
-            Instruction::STOP => self.halt = true,
+            Instruction::STOP => {}
             Instruction::DI => self.IME = false,
             Instruction::EI => self.IME = true,
 
@@ -41,7 +43,7 @@ impl CPU {
                 };
                 if branch {
                     self.reg.pc = self.reg.pc.wrapping_add(dest as u16);
-                    self.tick();
+                    // self.tick();
                 }
             }
             Instruction::JP(cond) => {
@@ -55,7 +57,7 @@ impl CPU {
                 };
                 if branch {
                     self.reg.pc = dest;
-                    self.tick();
+                    // self.tick();
                 }
             }
             Instruction::JPHL => self.reg.pc = self.reg.hl(),
@@ -69,14 +71,14 @@ impl CPU {
                 };
                 if branch {
                     self.reg.pc = self.pop(bus);
-                    self.tick();
+                    // self.tick();
                 }
-                self.tick();
+                // self.tick();
             }
             Instruction::RETI => {
                 self.IME = true;
                 self.reg.pc = self.pop(bus);
-                self.tick()
+                // self.tick()
             }
             Instruction::CALL(cond) => {
                 let dest = self.read_word_pc(bus);
@@ -90,7 +92,7 @@ impl CPU {
                 if branch {
                     self.push(bus, self.reg.pc);
                     self.reg.pc = dest;
-                    self.tick();
+                    // self.tick();
                 }
             }
             Instruction::PUSH(op) => {
@@ -118,7 +120,7 @@ impl CPU {
                 self.write_operand16(bus, dest, value);
                 if let Operand::Register16(Reg16Index::SP) = dest {
                     if let Operand::Register16(Reg16Index::HL) = src {
-                        self.tick();
+                        // self.tick();
                     }
                 }
             }
@@ -134,7 +136,7 @@ impl CPU {
                         self.reg.set_flag(Flag::H, half_carry);
                         self.reg.set_flag(Flag::C, carry);
                         self.reg.set_hl(new_value);
-                        self.tick();
+                        // self.tick();
                     }
                     Operand::Register8(Reg8Index::A) => {
                         let value = value.wrapping_add(0xFF00);
@@ -154,7 +156,7 @@ impl CPU {
                 match op {
                     Operand::Register16(_) => {
                         self.write_operand16(bus, op, value.wrapping_add(1));
-                        self.tick();
+                        // self.tick();
                     }
                     Operand::Register8(_) => {
                         let value = (value as u8).wrapping_add(1);
@@ -171,7 +173,7 @@ impl CPU {
                 match op {
                     Operand::Register16(_) => {
                         self.write_operand16(bus, op, value.wrapping_sub(1));
-                        self.tick();
+                        // self.tick();
                     }
                     Operand::Register8(_) => {
                         let value = (value as u8).wrapping_sub(1);
@@ -193,7 +195,7 @@ impl CPU {
                     .set_flag(Flag::H, (value & 0xFFF) + (self.reg.hl() & 0xFFF) > 0xFFF);
                 self.reg.set_flag(Flag::C, carry);
                 self.reg.set_hl(new_value);
-                self.tick();
+                // self.tick();
             }
             Instruction::ADDSP => {
                 let value = self.fetch(bus) as i8 as i16 as u16;
@@ -463,13 +465,13 @@ impl CPU {
     }
 
     fn read_byte(&mut self, bus: &mut MemoryBus, address: u16) -> u8 {
-        self.tick();
+        // self.tick();
         bus.read_byte(address)
             .unwrap_or_else(|| panic!("Cannot read Memory from {:#04X}", address))
     }
 
     fn write_byte(&mut self, bus: &mut MemoryBus, address: u16, value: u8) {
-        self.tick();
+        // self.tick();
         bus.write_byte(address, value)
             .unwrap_or_else(|| panic!("Cannot write Memory to {:#04X}", address))
     }
@@ -496,7 +498,7 @@ impl CPU {
         self.write_byte(bus, self.reg.sp.wrapping_sub(2), (value & 0xFF) as u8);
         self.write_byte(bus, self.reg.sp.wrapping_sub(1), (value >> 8) as u8);
         self.reg.sp = self.reg.sp.wrapping_sub(2);
-        self.tick();
+        // self.tick();
     }
     fn pop(&mut self, bus: &mut MemoryBus) -> u16 {
         let word = self.read_word(bus, self.reg.sp);
@@ -611,7 +613,10 @@ impl CPU {
                 }
             }
         } else if self.halt {
-            self.tick();
+            self.cycles += 256;
+            if (bus.get_if() & bus.get_ie()) != 0 {
+                self.halt = false;
+            }
         } else {
             let prev_pc = self.reg.pc;
             let mut instruction_byte = self.fetch(bus);
@@ -621,7 +626,7 @@ impl CPU {
                     prev_pc, instruction_byte
                 )
             });
-            if let Instruction::PREFIX = instruction {
+            self.cycles += if let Instruction::PREFIX = instruction {
                 instruction_byte = self.fetch(bus);
                 instruction =
                     Instruction::from_byte_prefixed(instruction_byte).unwrap_or_else(|| {
@@ -630,7 +635,10 @@ impl CPU {
                             prev_pc, instruction_byte
                         )
                     });
-            }
+                inst_cb_time[instruction_byte as usize] as u16
+            } else {
+                inst_time[instruction_byte as usize] as u16
+            };
             // println!(
             //     "pc = {:04X}, sp = {:04X}, af = {:04X}, bc = {:04X}, de = {:04X}, hl = {:04X}, inst = {:02X} : {:?}",
             //     prev_pc,
@@ -647,7 +655,7 @@ impl CPU {
         self.cycles
     }
 
-    fn tick(&mut self) {
-        self.cycles += self.cycles.wrapping_add(4);
-    }
+    // fn tick(&mut self) {
+    //     self.cycles += self.cycles.wrapping_add(4);
+    // }
 }

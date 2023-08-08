@@ -10,6 +10,7 @@ use rustygb::{
 };
 
 use minifb::{Key, Scale, Window, WindowOptions};
+use std::env;
 use std::fs::File;
 use std::io::BufReader;
 use std::io::Read;
@@ -26,6 +27,10 @@ fn read_rom(rom_name: &str) -> Vec<u8> {
 }
 
 fn main() {
+    let args: Vec<String> = env::args().collect();
+    if args.len() < 2 {
+        panic!("usage: rustygb [FileName]");
+    }
     let mut window = Window::new(
         "test",
         FRAME_WIDTH,
@@ -42,8 +47,9 @@ fn main() {
 
     window.limit_update_rate(Some(std::time::Duration::from_micros(16600)));
 
-    let rom = read_rom("./roms/Pokemon - Red Version (USA, Europe) (SGB Enhanced).gb");
+    let rom = read_rom(&args[1]);
 
+    let mut count = 0;
     let mut cpu = CPU::new();
     let mut bus = MemoryBus::new();
 
@@ -66,7 +72,7 @@ fn main() {
 
     while window.is_open() {
         let elasped_cycle = cpu.step(&mut bus);
-        clock.borrow_mut().step(&mut bus, elasped_cycle * 2);
+        clock.borrow_mut().step(&mut bus, elasped_cycle);
         gpu.borrow_mut().step(
             elasped_cycle,
             &mut bus,
@@ -77,22 +83,27 @@ fn main() {
             },
         );
         dma.borrow_mut().step(&mut bus);
-        // input.borrow_mut().step(|| -> (u8, u8) {
-        //     let (mut cross_input, mut ab_input) = (0, 0);
-        //     for key in window.get_keys() {
-        //         match key {
-        //             Key::Up => cross_input |= 0x04,
-        //             Key::Down => cross_input |= 0x08,
-        //             Key::Left => cross_input |= 0x02,
-        //             Key::Right => cross_input |= 0x01,
-        //             Key::Z => ab_input |= 0x01,
-        //             Key::X => ab_input |= 0x02,
-        //             Key::A => ab_input |= 0x08,
-        //             Key::B => ab_input |= 0x04,
-        //             _ => {}
-        //         }
-        //     }
-        //     (cross_input, ab_input)
-        // });
+        if count == 0xFFF {
+            count = 0;
+            input.borrow_mut().step(|| -> (u8, u8) {
+                let (mut cross_input, mut ab_input) = (0, 0);
+                for key in window.get_keys() {
+                    match key {
+                        Key::Up => cross_input |= 0x04,
+                        Key::Down => cross_input |= 0x08,
+                        Key::Left => cross_input |= 0x02,
+                        Key::Right => cross_input |= 0x01,
+                        Key::Z => ab_input |= 0x01,
+                        Key::X => ab_input |= 0x02,
+                        Key::A => ab_input |= 0x08,
+                        Key::B => ab_input |= 0x04,
+                        _ => {}
+                    }
+                }
+                (cross_input, ab_input)
+            });
+        } else {
+            count += 1;
+        }
     }
 }

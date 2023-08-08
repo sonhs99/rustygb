@@ -49,6 +49,9 @@ impl IOHandler for Cartridge {
                 }
             }
             0x6000..=0x7FFF => self.reg[3] = value,
+            0xA000..=0xBFFF => {
+                self.ram[((address & 0x1FFF) as u32 + self.ram_bank) as usize] = value;
+            }
             _ => return MemoryWrite::PassThrough,
         }
         MemoryWrite::PassThrough

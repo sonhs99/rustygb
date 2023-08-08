@@ -8,35 +8,41 @@ pub struct Clock {
     counter: u8,
     TMA: u8,
     TAC: u8,
+    inc: u8,
 }
 
 impl Clock {
     pub fn new() -> Clock {
         Clock {
-            cycles: 0,
+            cycles: 44288,
             counter: 0,
             TMA: 0,
             TAC: 0,
+            inc: 0,
         }
     }
 
     pub fn step(&mut self, mmu: &mut MemoryBus, elapsed_cycle: u16) {
         self.cycles = self.cycles.wrapping_add(elapsed_cycle);
         if self.TAC & 0x04 == 0x04 {
-            let new_cycles = (elapsed_cycle
-                / match self.TAC & 0x03 {
-                    0 => 1024,
-                    1 => 16,
-                    2 => 64,
-                    3 => 256,
-                    _ => unreachable!(),
-                }) as u8;
+            let divider = match self.TAC & 0x03 {
+                0 => 1024,
+                1 => 16,
+                2 => 64,
+                3 => 256,
+                _ => unreachable!(),
+            } as u16;
+            // println!("{}", divider);
+            let new_cycles = (elapsed_cycle / divider) as u8;
             if 0xFF - self.counter < new_cycles {
-                self.counter = self.TMA;
+                let rest = new_cycles - (0xFF - self.counter);
+                self.counter = self.TMA + rest;
                 mmu.set_if(mmu.get_if() | 0x04);
+                // println!("{}", mmu.get_if());
             } else {
                 self.counter += new_cycles;
             }
+            // println!("{} {} {}", new_cycles, self.counter, self.TMA);
         }
     }
 }
