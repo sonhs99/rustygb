@@ -1,12 +1,11 @@
+extern crate rustygb;
 mod hardware;
 use rustygb::Cartridge;
-use rustygb::Hardware;
 
 use std::env;
 use std::fs::File;
 use std::io::BufReader;
 use std::io::Read;
-use std::thread;
 
 fn read_rom(rom_name: &str) -> Vec<u8> {
     let file = File::open(rom_name).expect("File Not Found");
