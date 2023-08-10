@@ -10,7 +10,7 @@ use crate::{
     mmu::MemoryBus,
 };
 
-struct System {
+pub struct System {
     cpu: CPU,
     bus: MemoryBus,
     gpu: Device<GPU>,

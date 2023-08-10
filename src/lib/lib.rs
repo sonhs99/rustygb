@@ -19,4 +19,4 @@ mod system;
 pub use gpu::{FrameBuffer, FRAME_HEIGHT, FRAME_WIDTH};
 pub use hardware::Hardware;
 pub use mbc::Cartridge;
-pub use system::run;
+pub use system::{run, System};
