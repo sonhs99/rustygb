@@ -60,7 +60,7 @@ impl System {
         }
     }
 
-    pub fn step(&mut self) {
+    pub fn step(&mut self) -> u32 {
         let elasped_cycle = self.cpu.step(&mut self.bus);
         self.clock.borrow_mut().step(&mut self.bus, elasped_cycle);
         self.gpu
@@ -69,6 +69,7 @@ impl System {
         self.dma.borrow_mut().step(&mut self.bus);
         self.input.borrow_mut().step(&self.hardware);
         self.hardware.get().borrow_mut().update();
+        1
     }
 
     pub fn is_active(&mut self) -> bool {
