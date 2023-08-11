@@ -69,7 +69,7 @@ impl System {
         self.dma.borrow_mut().step(&mut self.bus);
         self.input.borrow_mut().step(&self.hardware);
         self.hardware.get().borrow_mut().update();
-        1
+        elasped_cycle as u32
     }
 
     pub fn is_active(&mut self) -> bool {
