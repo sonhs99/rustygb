@@ -613,7 +613,7 @@ impl CPU {
                 }
             }
         } else if self.halt {
-            self.cycles += 256;
+            self.cycles += 4;
             if (bus.get_if() & bus.get_ie()) != 0 {
                 self.halt = false;
             }
@@ -652,7 +652,7 @@ impl CPU {
             // );
             self.execute(bus, instruction);
         }
-        self.cycles
+        self.cycles * 4
     }
 
     // fn tick(&mut self) {
