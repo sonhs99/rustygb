@@ -1,5 +1,5 @@
 use minifb::{Key, Scale, Window, WindowOptions};
-use rustygb::FrameBuffer;
+use rustygb::{FrameBuffer, Pixel};
 
 pub struct Hardware {
     window: Window,
@@ -56,12 +56,17 @@ impl rustygb::Hardware for Hardware {
     }
 
     fn draw_framebuffer(&mut self, frame_buffer: &FrameBuffer) {
+        let mut frame = [0u32; rustygb::FRAME_WIDTH * rustygb::FRAME_HEIGHT];
+        for idx in 0..rustygb::FRAME_WIDTH * rustygb::FRAME_HEIGHT {
+            frame[idx] = match frame_buffer.pixels[idx] {
+                Pixel::Black => 0xFF000000,
+                Pixel::Dark => 0xFF555555,
+                Pixel::Bright => 0xFFAAAAAA,
+                Pixel::White => 0xFFFFFFFF,
+            }
+        }
         self.window
-            .update_with_buffer(
-                &frame_buffer.pixels,
-                rustygb::FRAME_WIDTH,
-                rustygb::FRAME_HEIGHT,
-            )
+            .update_with_buffer(&frame, rustygb::FRAME_WIDTH, rustygb::FRAME_HEIGHT)
             .unwrap();
     }
 

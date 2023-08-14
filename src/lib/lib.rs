@@ -16,7 +16,7 @@ mod register;
 mod sound;
 mod system;
 
-pub use gpu::{FrameBuffer, FRAME_HEIGHT, FRAME_WIDTH};
+pub use gpu::{FrameBuffer, Pixel, FRAME_HEIGHT, FRAME_WIDTH};
 pub use hardware::Hardware;
 pub use mbc::Cartridge;
 pub use system::{run, System};

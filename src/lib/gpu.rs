@@ -26,7 +26,8 @@ struct Tile {
     pixels: [u8; 16],
 }
 
-enum Pixel {
+#[derive(Clone, Copy)]
+pub enum Pixel {
     Black,
     Dark,
     Bright,
@@ -34,7 +35,7 @@ enum Pixel {
 }
 
 pub struct FrameBuffer {
-    pub pixels: [u32; FRAME_HEIGHT * FRAME_WIDTH],
+    pub pixels: [Pixel; FRAME_HEIGHT * FRAME_WIDTH],
 }
 
 pub struct GPU {
@@ -53,8 +54,6 @@ pub struct GPU {
     OBP0: u8,
     OBP1: u8,
     ppu_dot: u16,
-
-    palette: [[u32; 4]; 3],
 
     frame_buffer: FrameBuffer,
 }
@@ -92,13 +91,8 @@ impl GPU {
             OBP1: 0,
             ppu_dot: 0,
             frame_buffer: FrameBuffer {
-                pixels: [0; FRAME_HEIGHT * FRAME_WIDTH],
+                pixels: [Pixel::Black; FRAME_HEIGHT * FRAME_WIDTH],
             },
-            palette: [
-                [0xFFFFFFFF, 0xFFAAAAAA, 0xFF555555, 0xFF000000],
-                [0xFFFFFFFF, 0xFF8484FF, 0xFF3A3A94, 0xFF000000],
-                [0xFFFFFFFF, 0xFFFFA563, 0xFFFF0000, 0xFF000000],
-            ],
         }
     }
     pub fn step(&mut self, elapsed_cycles: u16, bus: &mut MemoryBus, hw: &HardwareHandle) {
@@ -131,8 +125,6 @@ impl GPU {
             } else {
                 (tmp.wrapping_add(self.SCX), self.LY.wrapping_add(self.SCY))
             };
-            let mut palette_index = BGP;
-            let mut palette = self.BGP;
             let tile_offset = if self.LCDC & (if is_window { 0x40 } else { 0x08 }) != 0 {
                 0x0400
             } else {
@@ -164,22 +156,22 @@ impl GPU {
                         );
                     if sprite_x < 8
                         && sprite_y < ysize
-                        // && !(sprite.attribute & 0x80 != 0 && color != 0)
+                        && !(sprite.attribute & 0x80 != 0 && color != 0)
                         && sprite_color != 0
                     {
                         color = sprite_color;
-                        (palette_index, palette) = if sprite.attribute & 0x10 != 0 {
-                            (OBP1, self.OBP1)
-                        } else {
-                            (OBP0, self.OBP0)
-                        };
                     }
                 }
             }
             self.frame_buffer.pixels[(self.LY as usize)
                 .wrapping_mul(160)
-                .wrapping_add(tmp as usize)] = self.palette[palette_index]
-                [((palette.wrapping_shr(2 * color as u32)) % 4) as usize];
+                .wrapping_add(tmp as usize)] = match color {
+                3 => Pixel::Black,
+                2 => Pixel::Dark,
+                1 => Pixel::Bright,
+                0 => Pixel::White,
+                _ => Pixel::Black,
+            }
         }
     }
 }
